@@ -1,5 +1,5 @@
 //jshint esversion:6
-require('dotenv').config();
+require('dotenv').config();    // environment variables
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -7,7 +7,9 @@ const encrypt = require('mongoose-encryption');
 const ejs = require('ejs');
 const port = 3000;
 const app = express();
-const md5 = require('md5');
+const md5 = require('md5');   // hashing
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 app.use(express.static('public'));
 app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -36,16 +38,18 @@ app.get("/register", function (req, res){
 });
 
 app.post("/register", function(req, res){
-  const user = new User({
-    email : req.body.username,
-    password : md5(req.body.password)
-  })
-  user.save(function(err){
-    if(err){
-      console.log(err);
-    }else{
-      res.render("secrets");
-    }
+  bcrypt.hash(req.body.password, saltRounds, function(err,hash){
+    const user = new User({
+      email: req.body.username,
+      password: hash
+    })
+    user.save(function(err){
+      if(err){
+        console.log(err);
+      }else{
+        res.render("secrets");
+      }
+    })
   })
 });
 
@@ -55,9 +59,11 @@ app.post("/login", function(req, res){
       console.log(err);
     }else{
       if(foundUser){
-        if(foundUser.password === md5(req.body.password)){
-          res.render("secrets")
-        }
+        bcrypt.compare(req.body.password, foundUser.password, function(err, result){
+          if(result == true){
+            res.render("secrets");
+          }
+        })
       }
     }
   })
